@@ -1,8 +1,0 @@
-{
-  "service": {
-    "name": "go-demo",
-    "tags": ["service"],
-    "port": 80,
-    "address": "{{key "proxy/ip"}}"
-  }
-}
