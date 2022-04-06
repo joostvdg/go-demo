@@ -1,0 +1,54 @@
+name: Build Docker Image
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REPOSITORY_PREFIX: ghcr.io/joostvdg
+
+
+jobs:
+  tag:
+    name: Create Tag & Release
+    runs-on: ubuntu-20.04
+    outputs:
+      tag: ${{ steps.version_bump.outputs.new_tag }}
+    steps:
+      - uses: actions/checkout@master
+      - id: version_bump
+        name: Bump version and push tag
+        uses: anothrNick/github-tag-action@1.17.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: false
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: v${{steps.version_bump.outputs.new_tag}}
+          release_name: Release ${{steps.version_bump.outputs.new_tag}}
+  build:
+    name: Build Container Image
+    runs-on: ubuntu-latest
+    needs: tag
+    steps:
+      - uses: actions/checkout@v2
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Docker Build
+        env:
+          IMAGE_TAG: ${{needs.tag.outputs.tag}}
+        run: docker build --tag ${REPOSITORY_PREFIX}/go-demo:${IMAGE_TAG}
+      - name: Push to Registry
+        env:
+          IMAGE_TAG: ${{needs.tag.outputs.tag}}
+        run: docker push ${REPOSITORY_PREFIX}/go-demo:${IMAGE_TAG}
