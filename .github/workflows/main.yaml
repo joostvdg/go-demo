@@ -47,7 +47,7 @@ jobs:
       - name: Docker Build
         env:
           IMAGE_TAG: ${{needs.tag.outputs.tag}}
-        run: docker build --tag ${REPOSITORY_PREFIX}/go-demo:${IMAGE_TAG}
+        run: docker build --tag ${REPOSITORY_PREFIX}/go-demo:${IMAGE_TAG} .
       - name: Push to Registry
         env:
           IMAGE_TAG: ${{needs.tag.outputs.tag}}
