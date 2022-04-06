@@ -2,27 +2,33 @@ package main
 
 import (
 	"fmt"
+	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 	"io"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
-
-	"github.com/prometheus/client_golang/prometheus"
+	zipkin "github.com/openzipkin/zipkin-go"
+	zipkinhttp "github.com/openzipkin/zipkin-go/middleware/http"
+	logreporter "github.com/openzipkin/zipkin-go/reporter/log"
 )
 
-var coll *mgo.Collection
 var sleep = time.Sleep
-var logFatal = log.Fatal
-var logPrintf = log.Printf
 var httpListenAndServe = http.ListenAndServe
 var serviceName = "go-demo"
+var zipkinHost = "localhost"
+var zipkinPort = "9411"
+var limiter = rate.NewLimiter(5, 10)
+var limitReachedTime = time.Now().Add(time.Second * (-60))
+var limitReached = false
+var zipkinClient *zipkinhttp.Client
 
 type Person struct {
 	Name string
@@ -42,10 +48,12 @@ var (
 )
 
 func main() {
+	logrus.SetFormatter(&logrus.JSONFormatter{})
+	logrus.Info("Starting the application")
 	if len(os.Getenv("SERVICE_NAME")) > 0 {
 		serviceName = os.Getenv("SERVICE_NAME")
 	}
-	setupDb()
+
 	RunServer()
 }
 
@@ -53,39 +61,68 @@ func init() {
 	prometheus.MustRegister(histogram)
 }
 
-// TODO: Test
-
-func setupDb() {
-	db := os.Getenv("DB")
-	if len(db) == 0 {
-		db = "localhost"
-	}
-	session, err := mgo.Dial(db)
-	if err != nil {
-		panic(err)
-	}
-	coll = session.DB("test").C("people")
-}
-
 func RunServer() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/demo/hello", HelloServer)
-	mux.HandleFunc("/demo/person", PersonServer)
-	mux.HandleFunc("/demo/random-error", RandomErrorServer)
-	mux.Handle("/metrics", prometheusHandler())
-	logFatal("ListenAndServe: ", httpListenAndServe(":8080", mux))
+	logrus.Info("Running the server")
+
+	// set up a span reporter
+	reporter := logreporter.NewReporter(log.New(os.Stderr, "", log.LstdFlags))
+	defer reporter.Close()
+
+	if len(os.Getenv("ZIPKIN_HOST")) > 0 {
+		zipkinHost = os.Getenv("ZIPKIN_HOST")
+	}
+	if len(os.Getenv("ZIPKIN_PORT")) > 0 {
+		zipkinPort = os.Getenv("ZIPKIN_PORT")
+	}
+
+	zipkinHostAndPort := fmt.Sprintf("%s:%s", zipkinHost, zipkinPort)
+	endpoint, err := zipkin.NewEndpoint("myService", zipkinHostAndPort)
+	if err != nil {
+		log.Fatalf("unable to create local endpoint: %+v\n", err)
+	}
+
+	// initialize our tracer
+	tracer, err := zipkin.NewTracer(reporter, zipkin.WithLocalEndpoint(endpoint))
+	if err != nil {
+		log.Fatalf("unable to create tracer: %+v\n", err)
+	}
+
+	// create global zipkin traced http client
+	zipkinClient, err = zipkinhttp.NewClient(tracer, zipkinhttp.ClientTrace(true))
+	if err != nil {
+		log.Fatalf("unable to create client: %+v\n", err)
+	}
+
+	// create global zipkin http server middleware
+	serverMiddleware := zipkinhttp.NewServerMiddleware(
+		tracer, zipkinhttp.TagResponseSize(true),
+	)
+	mux := mux.NewRouter()
+	mux.Use(serverMiddleware)
+	mux.HandleFunc("/", VersionServer)
+	mux.HandleFunc("/hello", HelloServer)
+	mux.HandleFunc("/random-error", RandomErrorServer)
+	mux.HandleFunc("/random-delay", RandomDelayServer)
+	mux.HandleFunc("/version", VersionServer)
+	mux.HandleFunc("/limiter", LimiterServer)
+	mux.Handle("/metrics", promhttp.Handler())
+
+	log.Fatal("ListenAndServe: ", httpListenAndServe(":8080", mux))
 }
 
 func HelloServer(w http.ResponseWriter, req *http.Request) {
 	start := time.Now()
 	defer func() { recordMetrics(start, req, http.StatusOK) }()
+	span := zipkin.SpanFromContext(req.Context())
+	logrus.Infof("%s request to %s", req.Method, req.RequestURI)
 
-	logPrintf("%s request to %s\n", req.Method, req.RequestURI)
 	delay := req.URL.Query().Get("delay")
 	if len(delay) > 0 {
 		delayNum, _ := strconv.Atoi(delay)
 		sleep(time.Duration(delayNum) * time.Millisecond)
+		span.Annotate(time.Now(), "delay: "+delay)
 	}
+
 	io.WriteString(w, "hello, world!\n")
 }
 
@@ -93,60 +130,58 @@ func RandomErrorServer(w http.ResponseWriter, req *http.Request) {
 	code := http.StatusOK
 	start := time.Now()
 	defer func() { recordMetrics(start, req, code) }()
+	zipkin.SpanFromContext(req.Context())
 
-	logPrintf("%s request to %s\n", req.Method, req.RequestURI)
+	logrus.Infof("%s request to %s", req.Method, req.RequestURI)
 	rand.Seed(time.Now().UnixNano())
 	n := rand.Intn(10)
-	msg := "Everything is still OK\n"
+	msg := "Everything is still OK"
 	if n == 0 {
 		code = http.StatusInternalServerError
-		msg = "ERROR: Something, somewhere, went wrong!\n"
-		logPrintf(msg)
+		msg = "ERROR: Something, somewhere, went wrong!"
+		logrus.Info(msg)
 	}
 	w.WriteHeader(code)
 	io.WriteString(w, msg)
 }
 
-func PersonServer(w http.ResponseWriter, req *http.Request) {
-	code := http.StatusOK
+func RandomDelayServer(w http.ResponseWriter, req *http.Request) {
 	start := time.Now()
-	defer func() { recordMetrics(start, req, code) }()
+	defer func() { recordMetrics(start, req, http.StatusOK) }()
+	zipkin.SpanFromContext(req.Context())
 
-	logPrintf("%s request to %s\n", req.Method, req.RequestURI)
-	msg := "Everything is OK"
-	if req.Method == "PUT" {
-		name := req.URL.Query().Get("name")
-		if _, err := upsertId(name, &Person{
-			Name: name,
-		}); err != nil {
-			code = http.StatusInternalServerError
-			msg = err.Error()
-		}
-	} else {
-		var res []Person
-		if err := findPeople(&res); err != nil {
-			panic(err)
-		}
-		var names []string
-		for _, p := range res {
-			names = append(names, p.Name)
-		}
-		msg = strings.Join(names, "\n")
+	logrus.Infof("%s request to %s", req.Method, req.RequestURI)
+	delay := rand.Intn(2000)
+	sleep(time.Duration(delay) * time.Millisecond)
+	io.WriteString(w, "hello, world!\n")
+}
+
+func VersionServer(w http.ResponseWriter, req *http.Request) {
+	logrus.Infof("%s request to %s", req.Method, req.RequestURI)
+	release := req.Header.Get("release")
+	if release == "" {
+		release = "unknown"
 	}
-	w.WriteHeader(code)
+	msg := fmt.Sprintf("Version: %s; Release: %s\n", os.Getenv("VERSION"), release)
 	io.WriteString(w, msg)
 }
 
-var prometheusHandler = func() http.Handler {
-	return prometheus.Handler()
-}
-
-var findPeople = func(res *[]Person) error {
-	return coll.Find(bson.M{}).All(res)
-}
-
-var upsertId = func(id interface{}, update interface{}) (info *mgo.ChangeInfo, err error) {
-	return coll.UpsertId(id, update)
+func LimiterServer(w http.ResponseWriter, req *http.Request) {
+	logrus.Infof("%s request to %s", req.Method, req.RequestURI)
+	zipkin.SpanFromContext(req.Context())
+	if limiter.Allow() == false {
+		logrus.Info("Limiter in action")
+		http.Error(w, http.StatusText(500), http.StatusTooManyRequests)
+		limitReached = true
+		limitReachedTime = time.Now()
+		return
+	} else if time.Since(limitReachedTime).Seconds() < 15 {
+		logrus.Info("Cooling down after the limiter")
+		http.Error(w, http.StatusText(500), http.StatusTooManyRequests)
+		return
+	}
+	msg := fmt.Sprintf("Everything is OK\n")
+	io.WriteString(w, msg)
 }
 
 func recordMetrics(start time.Time, req *http.Request, code int) {
