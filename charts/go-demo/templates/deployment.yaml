@@ -34,8 +34,12 @@ spec:
           image: "{{ .Values.image.repository }}/go-demo:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-            - name: VERSION
+            - name: SERVICE_NAME
+              value: {{ include "go-demo.fullname" . }}
+            - name: CHART_VERSION
               value: {{ .Chart.Version }}
+            - name: IMAGE_VERSION
+              value: {{ .Values.image.tag }}
             - name: ZIPKIN_HOST
               value: "{{ .Values.zipkin.host }}"
             - name: ZIPKIN_PORT

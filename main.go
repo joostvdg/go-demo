@@ -162,7 +162,7 @@ func VersionServer(w http.ResponseWriter, req *http.Request) {
 	if release == "" {
 		release = "unknown"
 	}
-	msg := fmt.Sprintf("Version: %s; Release: %s\n", os.Getenv("VERSION"), release)
+	msg := fmt.Sprintf("Chart Version: %s; Image Version: %s; Release: %s\n", os.Getenv("CHART_VERSION"), os.Getenv("IMAGE_VERSION"), release)
 	io.WriteString(w, msg)
 }
 
