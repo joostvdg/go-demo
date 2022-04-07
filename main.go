@@ -126,7 +126,11 @@ func HelloServer(w http.ResponseWriter, req *http.Request) {
 	start := time.Now()
 	defer func() { recordMetrics(start, req, http.StatusOK) }()
 	span := zipkin.SpanFromContext(req.Context())
-	logrus.Infof("%s request to %s", req.Method, req.RequestURI)
+	logrus.WithFields(logrus.Fields{
+		"method":  req.Method,
+		"path":    req.RequestURI,
+		"traceID": span.Context().TraceID,
+	}).Info("Request received")
 
 	delay := req.URL.Query().Get("delay")
 	if len(delay) > 0 {
@@ -142,9 +146,13 @@ func RandomErrorServer(w http.ResponseWriter, req *http.Request) {
 	code := http.StatusOK
 	start := time.Now()
 	defer func() { recordMetrics(start, req, code) }()
-	zipkin.SpanFromContext(req.Context())
+	span := zipkin.SpanFromContext(req.Context())
+	logrus.WithFields(logrus.Fields{
+		"method":  req.Method,
+		"path":    req.RequestURI,
+		"traceID": span.Context().TraceID,
+	}).Info("Request received")
 
-	logrus.Infof("%s request to %s", req.Method, req.RequestURI)
 	rand.Seed(time.Now().UnixNano())
 	n := rand.Intn(10)
 	msg := "Everything is still OK"
@@ -160,9 +168,13 @@ func RandomErrorServer(w http.ResponseWriter, req *http.Request) {
 func RandomDelayServer(w http.ResponseWriter, req *http.Request) {
 	start := time.Now()
 	defer func() { recordMetrics(start, req, http.StatusOK) }()
-	zipkin.SpanFromContext(req.Context())
+	span := zipkin.SpanFromContext(req.Context())
+	logrus.WithFields(logrus.Fields{
+		"method":  req.Method,
+		"path":    req.RequestURI,
+		"traceID": span.Context().TraceID,
+	}).Info("Request received")
 
-	logrus.Infof("%s request to %s", req.Method, req.RequestURI)
 	calculateDelay(req)
 
 	io.WriteString(w, "hello, world!\n")
@@ -191,8 +203,12 @@ func VersionServer(w http.ResponseWriter, req *http.Request) {
 }
 
 func LimiterServer(w http.ResponseWriter, req *http.Request) {
-	logrus.Infof("%s request to %s", req.Method, req.RequestURI)
-	zipkin.SpanFromContext(req.Context())
+	span := zipkin.SpanFromContext(req.Context())
+	logrus.WithFields(logrus.Fields{
+		"method":  req.Method,
+		"path":    req.RequestURI,
+		"traceID": span.Context().TraceID,
+	}).Info("Request received")
 	if limiter.Allow() == false {
 		logrus.Info("Limiter in action")
 		http.Error(w, http.StatusText(500), http.StatusTooManyRequests)
