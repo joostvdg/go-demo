@@ -31,11 +31,22 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: "{{ .Values.image.repository }}/go-demo:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: VERSION
+              value: {{ .Chart.Version }}
+            - name: ZIPKIN_HOST
+              value: "{{ .Values.zipkin.host }}"
+            - name: ZIPKIN_PORT
+              value: "{{ .Values.zipkin.port }}"
+{{- range $pkey, $pval := .Values.env }}
+            - name: {{ $pkey }}
+              value: {{ quote $pval }}
+{{- end }}
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 8080
               protocol: TCP
           livenessProbe:
             httpGet:

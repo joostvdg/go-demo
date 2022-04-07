@@ -1,0 +1,5 @@
+httpproxy:
+  enabled: true
+  fqdn: demo.tkg.kearos.net
+  prefix: /
+  replacement: /
