@@ -30,6 +30,7 @@ var limiter = rate.NewLimiter(5, 10)
 var limitReachedTime = time.Now().Add(time.Second * (-60))
 var limitReached = false
 var zipkinClient *zipkinhttp.Client
+var tracer *zipkin.Tracer
 
 type Person struct {
 	Name string
@@ -99,7 +100,8 @@ func newTracer() (*zipkin.Tracer, error) {
 
 func RunServer() {
 	logrus.Info("Running the server")
-	tracer, err := newTracer()
+	var err error = nil
+	tracer, err = newTracer()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -161,9 +163,21 @@ func RandomDelayServer(w http.ResponseWriter, req *http.Request) {
 	zipkin.SpanFromContext(req.Context())
 
 	logrus.Infof("%s request to %s", req.Method, req.RequestURI)
+	calculateDelay(req)
+
+	io.WriteString(w, "hello, world!\n")
+}
+
+func calculateDelay(req *http.Request) {
+	parentSpan := zipkin.SpanFromContext(req.Context())
+	spanOptions := zipkin.Parent(parentSpan.Context())
+	span := tracer.StartSpan("delay", spanOptions)
+	defer span.Finish()
+	span.Annotate(time.Now(), "delay start")
 	delay := rand.Intn(2000)
 	sleep(time.Duration(delay) * time.Millisecond)
-	io.WriteString(w, "hello, world!\n")
+	span.Tag("delay", string(delay))
+	span.Annotate(time.Now(), "delay finished")
 }
 
 func VersionServer(w http.ResponseWriter, req *http.Request) {
