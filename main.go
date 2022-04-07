@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/openzipkin/zipkin-go/model"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -15,9 +16,9 @@ import (
 	"strconv"
 	"time"
 
-	zipkin "github.com/openzipkin/zipkin-go"
+	"github.com/openzipkin/zipkin-go"
 	zipkinhttp "github.com/openzipkin/zipkin-go/middleware/http"
-	logreporter "github.com/openzipkin/zipkin-go/reporter/log"
+	reporterhttp "github.com/openzipkin/zipkin-go/reporter/http"
 )
 
 var sleep = time.Sleep
@@ -61,13 +62,10 @@ func init() {
 	prometheus.MustRegister(histogram)
 }
 
-func RunServer() {
-	logrus.Info("Running the server")
+func newTracer() (*zipkin.Tracer, error) {
+	// inspired by: https://medium.com/devthoughts/instrumenting-a-go-application-with-zipkin-b79cc858ac3e
 
-	// set up a span reporter
-	reporter := logreporter.NewReporter(log.New(os.Stderr, "", log.LstdFlags))
-	defer reporter.Close()
-
+	// The reporter sends traces to zipkin server
 	if len(os.Getenv("ZIPKIN_HOST")) > 0 {
 		zipkinHost = os.Getenv("ZIPKIN_HOST")
 	}
@@ -75,30 +73,42 @@ func RunServer() {
 		zipkinPort = os.Getenv("ZIPKIN_PORT")
 	}
 
-	zipkinHostAndPort := fmt.Sprintf("%s:%s", zipkinHost, zipkinPort)
-	endpoint, err := zipkin.NewEndpoint("myService", zipkinHostAndPort)
+	endpointURL := fmt.Sprintf("http://%s:%s/api/v2/spans", zipkinHost, zipkinPort)
+	reporter := reporterhttp.NewReporter(endpointURL)
+
+	// Local endpoint represent the local service information
+	localEndpoint := &model.Endpoint{ServiceName: serviceName, Port: 8080}
+
+	// Sampler tells you which traces are going to be sampled or not. In this case we will record 100% (1.00) of traces.
+	sampler, err := zipkin.NewCountingSampler(1)
 	if err != nil {
-		log.Fatalf("unable to create local endpoint: %+v\n", err)
+		return nil, err
 	}
 
-	// initialize our tracer
-	tracer, err := zipkin.NewTracer(reporter, zipkin.WithLocalEndpoint(endpoint))
-	if err != nil {
-		log.Fatalf("unable to create tracer: %+v\n", err)
-	}
-
-	// create global zipkin traced http client
-	zipkinClient, err = zipkinhttp.NewClient(tracer, zipkinhttp.ClientTrace(true))
-	if err != nil {
-		log.Fatalf("unable to create client: %+v\n", err)
-	}
-
-	// create global zipkin http server middleware
-	serverMiddleware := zipkinhttp.NewServerMiddleware(
-		tracer, zipkinhttp.TagResponseSize(true),
+	t, err := zipkin.NewTracer(
+		reporter,
+		zipkin.WithSampler(sampler),
+		zipkin.WithLocalEndpoint(localEndpoint),
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	return t, err
+}
+
+func RunServer() {
+	logrus.Info("Running the server")
+	tracer, err := newTracer()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	mux := mux.NewRouter()
-	mux.Use(serverMiddleware)
+	mux.Use(zipkinhttp.NewServerMiddleware(
+		tracer,
+		zipkinhttp.SpanName("request")), // name for request span
+	)
 	mux.HandleFunc("/", VersionServer)
 	mux.HandleFunc("/hello", HelloServer)
 	mux.HandleFunc("/random-error", RandomErrorServer)
