@@ -20,7 +20,6 @@ zipkin:
 
 resources:
   limits:
-    cpu: 250m
     memory: 64Mi
   requests:
     cpu: 250m
