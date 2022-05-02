@@ -17,10 +17,12 @@ jobs:
     outputs:
       tag: ${{ steps.version_bump.outputs.new_tag }}
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
       - id: version_bump
         name: Bump version and push tag
-        uses: anothrNick/github-tag-action@1.17.2
+        uses: anothrNick/github-tag-action@1.36.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WITH_V: false
