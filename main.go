@@ -175,7 +175,11 @@ func RandomDelayServer(w http.ResponseWriter, req *http.Request) {
 		"traceID": span.Context().TraceID,
 	}).Info("Request received")
 
+	delay := rand.Intn(250)
+	sleep(time.Duration(delay) * time.Millisecond)
 	calculateDelay(req)
+	delay = rand.Intn(250)
+	sleep(time.Duration(delay) * time.Millisecond)
 
 	io.WriteString(w, "hello, world!\n")
 }
@@ -186,7 +190,7 @@ func calculateDelay(req *http.Request) {
 	span := tracer.StartSpan("delay", spanOptions)
 	defer span.Finish()
 	span.Annotate(time.Now(), "delay start")
-	delay := rand.Intn(2000)
+	delay := rand.Intn(1500)
 	sleep(time.Duration(delay) * time.Millisecond)
 	span.Tag("delay", string(delay))
 	span.Annotate(time.Now(), "delay finished")
