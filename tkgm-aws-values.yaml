@@ -3,3 +3,14 @@ httpproxy:
   fqdn: demo.tkg.kearos.net
   prefix: /
   replacement: /
+
+image:
+  tag: "0.5.0-2485039"
+
+zipkin:
+  host: zipkip-zipkin.zipkin.svc.cluster.local
+  port: 9411
+
+podAnnotations:
+  prometheus.io/port: "8080"
+  prometheus.io/scrape: "true"
