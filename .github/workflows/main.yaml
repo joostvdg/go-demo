@@ -46,6 +46,8 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Docker Driver Config
+        run: docker buildx create --use
       - name: Docker Build
         env:
           IMAGE_TAG: ${{needs.tag.outputs.tag}}
