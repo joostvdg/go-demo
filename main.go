@@ -2,12 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/openzipkin/zipkin-go/model"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sirupsen/logrus"
-	"golang.org/x/time/rate"
 	"io"
 	"log"
 	"math/rand"
@@ -16,7 +10,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/openzipkin/zipkin-go"
+	"github.com/gorilla/mux"
+	"github.com/openzipkin/zipkin-go/model"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
+
 	zipkinhttp "github.com/openzipkin/zipkin-go/middleware/http"
 	reporterhttp "github.com/openzipkin/zipkin-go/reporter/http"
 )
@@ -202,7 +202,13 @@ func VersionServer(w http.ResponseWriter, req *http.Request) {
 	if release == "" {
 		release = "unknown"
 	}
-	msg := fmt.Sprintf("Chart Version: %s; Image Version: %s; Release: %s\n", os.Getenv("CHART_VERSION"), os.Getenv("IMAGE_VERSION"), release)
+
+	// HOSTNAME, K_REVISION, K_SERVICE
+
+	msg := fmt.Sprintf("Chart Version: %s; Image Version: %s; Release: %s, "+
+		"Host: %s, Revision: %s, Service: %s\n",
+		os.Getenv("CHART_VERSION"), os.Getenv("IMAGE_VERSION"), release,
+		os.Getenv("HOSTNAME"), os.Getenv("K_REVISION"), os.Getenv("K_SERVICE"))
 	io.WriteString(w, msg)
 }
 
