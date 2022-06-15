@@ -87,12 +87,11 @@ spec:
                   scmVars = checkout scm
                   GIT_SHA = "${scmVars.GIT_COMMIT}"
                   COMMIT_INFO = "${scmVars.GIT_COMMIT} ${scmVars.GIT_PREVIOUS_COMMIT}"
-                  def changeSetData = sh returnStdout: true, script: "git diff-tree --no-commit-id --name-only -r ${COMMIT_INFO}"
+                  GIT_REPO = "${scmVars.GIT_URL}"
                   // use this if used within a Pipeline Job
                   // scmVars = git('https://github.com/joostvdg/go-demo.git')
                 }
                 echo "scmVars=${scmVars}"
-                echo "changeSetData=${changeSetData}"
                 gitRemoteConfigByUrl(scmVars.GIT_URL, 'githubtoken')
                 sh '''
                 git config --global user.email "jenkins@jenkins.io"
