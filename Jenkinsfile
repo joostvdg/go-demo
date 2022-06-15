@@ -16,7 +16,7 @@ pipeline {
     REPO        = 'harbor.10.220.7.70.nip.io/test'
     IMAGE       = 'go-demo'
     TAG         = ''
-    TAG_BASE    = "0.1"
+    TAG_BASE    = "1.0"
     CA_PEM      = """-----BEGIN CERTIFICATE-----
 MIID7jCCAtagAwIBAgIURv5DzXSDklERFu4gL2sQBNeRg+owDQYJKoZIhvcNAQEL
 BQAwgY4xCzAJBgNVBAYTAk5MMRgwFgYDVQQIEw9UaGUgTmV0aGVybGFuZHMxEDAO
