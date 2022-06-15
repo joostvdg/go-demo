@@ -85,7 +85,6 @@ spec:
                 script {
                   // use this if used within Multibranch or Org Job
                   scmVars = checkout scm
-                  scmVars = git "${GIT_REPO}"
                   GIT_SHA = "${scmVars.GIT_COMMIT}"
                   COMMIT_INFO = "${scmVars.GIT_COMMIT} ${scmVars.GIT_PREVIOUS_COMMIT}"
                   def changeSetData = sh returnStdout: true, script: "git diff-tree --no-commit-id --name-only -r ${COMMIT_INFO}"
