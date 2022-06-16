@@ -86,6 +86,7 @@ spec:
                   GIT_REPO = "${scmVars.GIT_URL}"
                   // use this if used within a Pipeline Job
                   // scmVars = git('https://github.com/joostvdg/go-demo.git')
+                  TAG = gitNextSemverTag("${TAG_BASE}")
                 }
                 echo "scmVars=${scmVars}"
                 gitRemoteConfigByUrl(scmVars.GIT_URL, 'githubtoken')
@@ -94,7 +95,6 @@ spec:
                 git config --global user.name "Jenkins"
                 '''
                 // requires: https://plugins.jenkins.io/pipeline-utility-steps and https://github.com/joostvdg/jpl-core
-                TAG = gitNextSemverTag("${TAG_BASE}")
               }
             }
             stage('Version Bump') {
