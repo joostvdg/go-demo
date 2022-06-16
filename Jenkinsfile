@@ -64,9 +64,6 @@ spec:
     volumeMounts:
       - name: jenkins-docker-cfg
         mountPath: /kaniko/.docker
-    env:
-      - name: SSL_CERT_FILE
-        value: /home/jenkins/agent/workspace/kaniko-test-2/ca.pem # this is the job name...
   volumes:
   - name: jenkins-docker-cfg
     projected:
@@ -117,7 +114,7 @@ spec:
                 writeFile encoding: 'UTF-8', file: 'ca.pem', text: "${CA_PEM}"
                 sh 'echo image fqn=${REPO}/${IMAGE}:${TAG}'
                 container(name: 'kaniko', shell: '/busybox/sh') {
-                  withEnv(['PATH+EXTRA=/busybox']) {
+                  withEnv(['PATH+EXTRA=/busybox',"SSL_CERT_FILE=${WORKSPACE}/ca.pem"]) {
                     sh '''#!/busybox/sh
                     /kaniko/executor --context `pwd` --destination ${REPO}/${IMAGE}:${TAG} --destination ${REPO}/${IMAGE}:latest --reproducible --label org.opencontainers.image.revision=$GIT_SHA --label org.opencontainers.image.source=$GIT_REPO
                     '''
