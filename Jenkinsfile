@@ -7,7 +7,6 @@ pipeline {
   }
   libraries {
     lib('jpl-core@master') // https://github.com/joostvdg/jpl-core
-    // lib('jpl-maven@master') // https://github.com/joostvdg/jpl-maven
   }
   environment {
     COMMIT_INFO = ''
@@ -94,16 +93,13 @@ spec:
                 git config --global user.email "jenkins@jenkins.io"
                 git config --global user.name "Jenkins"
                 '''
-                //sh 'env'
+                // requires: https://plugins.jenkins.io/pipeline-utility-steps and https://github.com/joostvdg/jpl-core
+                TAG = gitNextSemverTag("${TAG_BASE}")
               }
             }
             stage('Version Bump') {
               // disable when {} when used in a Pipeline
               when { branch 'main' }
-              // requires: https://plugins.jenkins.io/pipeline-utility-steps
-              environment {
-                TAG = gitNextSemverTag("${TAG_BASE}")
-              }
               steps {
                 gitTag("v${TAG}")
               }
@@ -116,7 +112,7 @@ spec:
                 container(name: 'kaniko', shell: '/busybox/sh') {
                   withEnv(['PATH+EXTRA=/busybox',"SSL_CERT_FILE=${WORKSPACE}/ca.pem"]) {
                     sh '''#!/busybox/sh
-                    /kaniko/executor --context `pwd` --destination ${REPO}/${IMAGE}:${TAG} --destination ${REPO}/${IMAGE}:latest --reproducible --label org.opencontainers.image.revision=$GIT_SHA --label org.opencontainers.image.source=$GIT_REPO
+                    /kaniko/executor --context `pwd` --destination ${REPO}/${IMAGE}:${TAG} --destination ${REPO}/${IMAGE}:latest --cache --label org.opencontainers.image.revision=$GIT_SHA --label org.opencontainers.image.source=$GIT_REPO
                     '''
                   }
                 }
@@ -127,7 +123,8 @@ spec:
       }
     }
     stage('Image Test') {
-      when { changeRequest target: 'main' }
+      when { branch 'main' }
+      // when { changeRequest target: 'main' }
       parallel {
         stage('Application Image') {
             agent {
