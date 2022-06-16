@@ -3,12 +3,11 @@ name: Build Docker Image
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
+    paths-ignore:
+      - 'Jenkinsfile'
+      - 'README.md'
 env:
   REPOSITORY_PREFIX: ghcr.io/joostvdg
-
 
 jobs:
   tag:
@@ -52,7 +51,3 @@ jobs:
         env:
           IMAGE_TAG: ${{needs.tag.outputs.tag}}
         run: docker buildx build . --platform linux/arm64,linux/amd64 --tag ${REPOSITORY_PREFIX}/go-demo:${IMAGE_TAG} --push
-#      - name: Push to Registry
-#        env:
-#          IMAGE_TAG: ${{needs.tag.outputs.tag}}
-#        run: docker push ${REPOSITORY_PREFIX}/go-demo:${IMAGE_TAG}
