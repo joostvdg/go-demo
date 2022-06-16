@@ -108,11 +108,11 @@ spec:
               when { branch 'main' }
               steps {
                 writeFile encoding: 'UTF-8', file: 'ca.pem', text: "${CA_PEM}"
-                sh 'echo image fqn=${REPO}/${IMAGE}:${TAG}'
+                sh "echo image fqn=${REPO}/${IMAGE}:${TAG}"
                 container(name: 'kaniko', shell: '/busybox/sh') {
-                  withEnv(['PATH+EXTRA=/busybox',"SSL_CERT_FILE=${WORKSPACE}/ca.pem"]) {
+                  withEnv(['PATH+EXTRA=/busybox',"SSL_CERT_FILE=${WORKSPACE}/ca.pem","IMAGE_TAG=${TAG}"]) {
                     sh '''#!/busybox/sh
-                    /kaniko/executor --context `pwd` --destination ${REPO}/${IMAGE}:${TAG} --destination ${REPO}/${IMAGE}:latest --cache --label org.opencontainers.image.revision=$GIT_SHA --label org.opencontainers.image.source=$GIT_REPO
+                    /kaniko/executor --context `pwd` --destination ${REPO}/${IMAGE}:${IMAGE_TAG} --destination ${REPO}/${IMAGE}:latest --cache --label org.opencontainers.image.revision=$GIT_SHA --label org.opencontainers.image.source=$GIT_REPO
                     '''
                   }
                 }
