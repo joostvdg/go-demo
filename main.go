@@ -37,9 +37,10 @@ type Person struct {
 	Name string
 }
 
+var GitCommit string
+var SemVer string
+
 var (
-	gitCommit string
-	semver    string
 	histogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Subsystem: "http_server",
 		Name:      "resp_time",
@@ -209,10 +210,10 @@ func VersionServer(w http.ResponseWriter, req *http.Request) {
 	// HOSTNAME, K_REVISION, K_SERVICE
 
 	msg := fmt.Sprintf("Chart Version: %s; Image Version: %s; Release: %s, "+
-		"SemVer: %s, gitCommit: %s,"+
+		"SemVer: %s, GitCommit: %s,"+
 		"Host: %s, Revision: %s, Service: %s\n",
 		os.Getenv("CHART_VERSION"), os.Getenv("IMAGE_VERSION"), release,
-		semver, gitCommit,
+		SemVer, GitCommit,
 		os.Getenv("HOSTNAME"), os.Getenv("K_REVISION"), os.Getenv("K_SERVICE"))
 	io.WriteString(w, msg)
 }
