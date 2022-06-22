@@ -110,9 +110,9 @@ spec:
                 writeFile encoding: 'UTF-8', file: 'ca.pem', text: "${CA_PEM}"
                 sh "echo image fqn=${REPO}/${IMAGE}:${TAG}"
                 container(name: 'kaniko', shell: '/busybox/sh') {
-                  withEnv(['PATH+EXTRA=/busybox',"SSL_CERT_FILE=${WORKSPACE}/ca.pem","IMAGE_TAG=${TAG}"]) {
+                  withEnv(['PATH+EXTRA=/busybox',"SSL_CERT_FILE=${WORKSPACE}/ca.pem","IMAGE_TAG=${TAG}", "GIT_COMMIT=${GIT_SHA}"]) {
                     sh '''#!/busybox/sh
-                    /kaniko/executor --context `pwd` --destination ${REPO}/${IMAGE}:${IMAGE_TAG} --destination ${REPO}/${IMAGE}:latest --cache --label org.opencontainers.image.revision=$GIT_SHA --label org.opencontainers.image.source=$GIT_REPO
+                    /kaniko/executor --context `pwd` --destination ${REPO}/${IMAGE}:${IMAGE_TAG} --build-arg "GIT_COMMIT=${GIT_COMMIT}" --build-arg "SEM_VER=${TAG}" --destination ${REPO}/${IMAGE}:latest --cache --label org.opencontainers.image.revision=$GIT_SHA --label org.opencontainers.image.source=$GIT_REPO
                     '''
                   }
                 }
