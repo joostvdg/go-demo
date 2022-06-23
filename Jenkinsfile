@@ -133,6 +133,9 @@ spec:
         stage('Application Image') {
           stages {
             stage('Verify Image') {
+              options {
+                skipDefaultCheckout true
+              }
               agent {
                 kubernetes {
                   containerTemplate {
@@ -150,6 +153,9 @@ spec:
               }
             }
             stage('Test Tanzu CLI') {
+              options {
+                skipDefaultCheckout true
+              }
               agent {
                 kubernetes {
                 inheritFrom 'default'
@@ -176,6 +182,7 @@ spec:
                   --limit-memory 32Mi \
                   --request-cpu 500m \
                   --request-memory 16Mi \
+                  -n dev \
                   --image ${REPO}/${IMAGE}:${TAG}
                   """
                 }
