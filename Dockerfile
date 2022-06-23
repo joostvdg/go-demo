@@ -1,4 +1,4 @@
-FROM golang:1.17 AS build
+FROM gcr.io/cloud-builders/go:1.17 AS build
 WORKDIR /go/src/go-demo
 ARG TARGETARCH
 ARG TARGETOS
