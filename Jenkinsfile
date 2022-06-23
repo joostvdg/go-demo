@@ -116,7 +116,7 @@ spec:
                     echo SEM_VER=${IMAGE_TAG}
                     '''
                     sh '''#!/busybox/sh
-                    /kaniko/executor --context `pwd` --destination ${REPO}/${IMAGE}:${IMAGE_TAG} --build-arg "GIT_COMMIT=${GIT_COMMIT}" --build-arg "SEM_VER=${TAG}" --destination ${REPO}/${IMAGE}:latest --cache --label org.opencontainers.image.revision=$GIT_SHA --label org.opencontainers.image.source=$GIT_REPO
+                    /kaniko/executor --context `pwd` --destination ${REPO}/${IMAGE}:${IMAGE_TAG} --build-arg "GIT_COMMIT=${GIT_COMMIT}" --build-arg "SEM_VER=${IMAGE_TAG}" --destination ${REPO}/${IMAGE}:latest --cache --label org.opencontainers.image.revision=$GIT_SHA --label org.opencontainers.image.source=$GIT_REPO
                     '''
                   }
                 }
