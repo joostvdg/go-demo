@@ -166,7 +166,7 @@ spec:
                   sh "echo image fqn=${REPO}/${IMAGE}:${TAG}"
                   sh 'tanzu apps workload list -n dev'
                   sh """
-                  tap apps workload update go-demo-from-image \
+                  tanzu apps workload update go-demo-from-image \
                   --app go-demo \
                   --type web \
                   --yes \
