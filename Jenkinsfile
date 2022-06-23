@@ -131,22 +131,53 @@ spec:
       // when { changeRequest target: 'main' }
       parallel {
         stage('Application Image') {
-            agent {
-            kubernetes {
-              label 'app-test'
-              containerTemplate {
-                name 'app'
-                image "${REPO}/${IMAGE}:${TAG}"
-                ttyEnabled true
-                command 'cat'
-              }
-            }
-          }
           stages {
             stage('Verify Image') {
+              agent {
+                kubernetes {
+                  containerTemplate {
+                    name 'app'
+                    image "${REPO}/${IMAGE}:${TAG}"
+                    ttyEnabled true
+                    command 'cat'
+                  }
+                }
+              }
               steps {
                 container('app') {
                   sh 'echo "hello"'
+                }
+              }
+            }
+            stage('Test Tanzu CLI') {
+              agent {
+                kubernetes {
+                inheritFrom 'default'
+                  containerTemplate {
+                    name 'tanzu'
+                    image "harbor.10.220.7.70.nip.io/test/tap-utils:0.1.3"
+                    ttyEnabled true
+                    command 'cat'
+                  }
+                }
+              }
+              steps {
+                container('tanzu') {
+                  sh "echo image fqn=${REPO}/${IMAGE}:${TAG}"
+                  sh 'tanzu apps workload list -n dev'
+                  sh """
+                  tap apps workload update go-demo-from-image \
+                  --app go-demo \
+                  --type web \
+                  --yes \
+                  --annotation "prometheus.io/scrape=true" \
+                  --annotation "prometheus.io/path=/metrics" \
+                  --annotation "prometheus.io/port=8080" \
+                  --limit-memory 32Mi \
+                  --request-cpu 500m \
+                  --request-memory 16Mi \
+                  --image ${REPO}/${IMAGE}:${TAG}
+                  """
                 }
               }
             }
