@@ -1,4 +1,4 @@
-FROM gcr.io/cloud-builders/go:1.17 AS build
+FROM public.ecr.aws/docker/library/golang:1.20.1-bullseye AS build
 WORKDIR /go/src/go-demo
 ARG TARGETARCH
 ARG TARGETOS
