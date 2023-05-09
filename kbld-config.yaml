@@ -1,0 +1,16 @@
+apiVersion: kbld.k14s.io/v1alpha1
+kind: Sources
+sources:
+  - image: go-demo-kbld
+    path: .
+#pack:
+#  build:
+##    builder: heroku/buildpacks:18
+#    builder: paketobuildpacks/builder:base
+---
+
+apiVersion: kbld.k14s.io/v1alpha1
+kind: ImageDestinations
+destinations:
+  - image: go-demo-kbld
+    newImage: docker.io/joostvdgtanzu/go-demo-kbld

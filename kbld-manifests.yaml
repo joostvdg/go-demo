@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: go-demo
+  name: go-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-demo
+  strategy: { }
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: go-demo
+    spec:
+      containers:
+        - image: go-demo-kbld
+          name: go-demo
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: go-demo
+  name: go-demo
+spec:
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: go-demo
+  type: ClusterIP
