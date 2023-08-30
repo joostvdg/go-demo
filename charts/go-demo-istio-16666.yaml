@@ -1,0 +1,36 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: go-demo-gateway
+  namespace: go-demo
+spec:
+  selector:
+    istio: ingressgateway # use Istio default gateway implementation
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "go-demo.tsm.h2o-2-16666.h2o.vmware.com"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: go-demo
+  namespace: go-demo
+spec:
+  hosts:
+  - "go-demo.tsm.h2o-2-16666.h2o.vmware.com"
+  gateways:
+  - go-demo-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        port:
+          number: 80
+        host: go-demo
+

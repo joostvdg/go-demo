@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/wavefronthq/wavefront-sdk-go/application"
 	"io"
 	"log"
 	"math/rand"
@@ -60,7 +61,47 @@ func main() {
 		serviceName = os.Getenv("SERVICE_NAME")
 	}
 
+	if len(os.Getenv("WAVEFRONT_PROXY_ENABLED")) > 0 && os.Getenv("WAVEFRONT_PROXY_ENABLED") == "true" {
+		wavefrontProxyEnabled = true
+		setupWavefrontProxy()
+	}
+
 	RunServer()
+}
+
+func setupWavefrontProxy() {
+	// The reporter sends traces to zipkin server
+	if len(os.Getenv("WAVEFRONT_PROXY_HOSTNAME")) > 0 {
+		wavefrontProxyHostname = os.Getenv("WAVEFRONT_PROXY_HOSTNAME")
+	}
+	if len(os.Getenv("WAVEFRONT_PROXY_PORT")) > 0 {
+		wavefrontProxyPort = os.Getenv("WAVEFRONT_PROXY_PORT")
+	}
+
+	proxyCfg := &senders.ProxyConfiguration{
+		// The proxy hostname or address
+		Host: wavefrontProxyHostname,
+
+		// Set the proxy port to send metrics to. Default: 2878
+		MetricsPort: wavefrontProxyPort,
+
+		// Set a proxy port to send histograms to. Recommended: 2878
+		DistributionPort: wavefrontProxyPort,
+	}
+
+	// Create the proxy sender
+	sender, err := senders.NewProxySender(proxyCfg)
+	if err != nil {
+		panic(err)
+	}
+
+	reporter := reporting.NewReporter(
+		sender,
+		application.New("go-demo", "go-demo-service"),
+		reporting.Source("go-metrics-test"),
+		reporting.Prefix("test.prefix"),
+		reporting.LogErrors(true),
+	)
 }
 
 func init() {

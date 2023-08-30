@@ -1,0 +1,15 @@
+image:
+  tag: "2.9.0"
+
+zipkin:
+  host: wavefront-proxy-tanzu.tanzu-observability-saas.svc.cluster.local
+  port: 9411
+
+podAnnotations:
+  prometheus.io/port: "8080"
+  prometheus.io/scrape: "true"
+  prometheus.io/scheme: 'http'
+  prometheus.io/path: '/metrics'
+
+autoscaling:
+  enabled: true
