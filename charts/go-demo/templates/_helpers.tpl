@@ -41,6 +41,8 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
+app: go-demo
+version: {{ .Chart.AppVersion | quote }}
 
 {{/*
 Selector labels

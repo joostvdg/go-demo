@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: {{ include "go-demo.fullname" . }}
   labels:
+    app: go-demo
+    version: {{ .Chart.AppVersion | quote }}
     {{- include "go-demo.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}

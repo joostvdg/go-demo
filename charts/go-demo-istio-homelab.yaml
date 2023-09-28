@@ -1,0 +1,60 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: go-demo-gateway
+  namespace: istio-system
+spec:
+  secretName: go-demo-tls
+  issuerRef:
+    name: kearos-issuer
+    kind: "ClusterIssuer"
+  commonName: go-demo.home.lab
+  dnsNames:
+  - go-demo.home.lab
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: go-demo-gateway
+  namespace: go-demo
+spec:
+  selector:
+    istio: ingressgateway # use Istio default gateway implementation
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "go-demo.home.lab"  
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: go-demo-tls
+    hosts:
+    - "go-demo.home.lab"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: go-demo
+  namespace: go-demo
+spec:
+  hosts:
+  - "go-demo.home.lab"
+  gateways:
+  - go-demo-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        port:
+          number: 80
+        host: go-demo
+
