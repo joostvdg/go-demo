@@ -20,7 +20,7 @@ jobs:
           echo "versionBase=$versionBase" >> $GITHUB_ENV
 
       - name: GitNextTag
-        uses: joostvdg/git-next-tag-action@v0.2.0
+        uses: joostvdg/git-next-tag-action@v0.2.1
         env:
           BASE_TAG: ${{ env.versionBase }}
           PRE_RELEASE: true
