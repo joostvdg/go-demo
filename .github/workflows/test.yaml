@@ -1,15 +1,41 @@
 on: [push]
 
 jobs:
-  hello_world_job:
+  generate-version:
     runs-on: ubuntu-latest
-    name: A job to say hello
+
     steps:
-      - name: Hello world action step
-        id: hello
-        uses: actions/hello-world-docker-action@v2
+      - name: Checkout repository with tags
+        uses: actions/checkout@v4
         with:
-          who-to-greet: 'Mona the Octocat'
-      # Use the output from the `hello` step
-      - name: Get the output time
-        run: echo "The time was ${{ steps.hello.outputs.time }}"
+          fetch-depth: 0  # Fetch all history including tags
+
+      - name: List Git tags
+        run: git tag
+
+      - name: Read versionBase from ci.yaml
+        id: read_version_base
+        run: |
+          versionBase=$(grep 'versionBase' ci.yaml | awk '{print $2}')
+          echo "versionBase=$versionBase" >> $GITHUB_ENV
+
+      - name: GitNextTag
+        uses: joostvdg/git-next-tag-action@v0.2.0
+        env:
+          BASE_TAG: ${{ env.versionBase }}
+          PRE_RELEASE: true
+          SUFFIX: "rc"
+          OUTPUT_PATH: version.txt
+
+#      - name: Generate version number
+#        run: |
+#          docker run --rm \
+#            -v ${{ github.workspace }}:/workspace \
+#            --user $(id -u):$(id -g) \
+#            ghcr.io/joostvdg/git-next-tag:1.2.0-alpine --baseTag ${{ env.versionBase }} --path /workspace --outputPath /workspace/version.txt -vvv
+
+      - name: Read version.txt and store in env variable
+        run: echo "nextVersion=$(cat version.txt)" >> $GITHUB_ENV
+
+      - name: Use nextVersion variable
+        run: echo "The next version is ${{ env.nextVersion }}"
